@@ -229,13 +229,9 @@ reorder_popularity
 
 ```{r}
 num_products_txt <- "
-SELECT order_id,n_products
-FROM (
-  SELECT order_id,COUNT(1) AS n_products
-  FROM order_products__prior_tbl
-  GROUP BY order_id
-  ORDER BY n_products DESC
-  LIMIT 30)
+SELECT order_id,COUNT(1) AS n_products
+FROM order_products__prior_tbl
+GROUP BY order_id
 "
 
 
@@ -244,9 +240,43 @@ num_products <-
 
 num_products
 
+num_products %>%
+  ggplot(
+    aes(reorder(order_id, n_products, function(x) x), 
+        n_products)) +
+  geom_bar(stat="identity", fill='darkorange') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("orders") +
+  ylab("Number of products") +
+  theme_minimal()
+
 ```
 
 * What is the most popular department? 
+
+reorder_popularity_txt <- "
+SELECT op.product_id,n_orders,product_name
+FROM (
+  SELECT product_id,COUNT(1) AS n_orders
+  FROM order_products__prior_tbl
+  WHERE reordered=1
+  GROUP BY product_id
+  ORDER BY n_orders ASC
+  LIMIT 30)op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+
+reorder_popularity <-
+  dbGetQuery(sc, reorder_popularity_txt)
+
+reorder_popularity
+
 
 ## Whisker, magrittr
 

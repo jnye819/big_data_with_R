@@ -17,12 +17,12 @@ readInstacart <- function() {
     spark_read_csv(sc, "order_products__prior_tbl", 
                    file.path(DATA_DIR, "order_products__prior.csv"))
   
-  order_products__train <<- 
-    spark_read_csv(sc, "order_products__train_tbl", 
+  order_products__train <<-
+    spark_read_csv(sc, "order_products__train_tbl",
                    file.path(DATA_DIR, "order_products__train.csv"))
-  
+
   orders <<- spark_read_csv(sc, "orders_tbl", file.path(DATA_DIR, "orders.csv"))
-  
+
   products <<- spark_read_csv(sc, "products_tbl", file.path(DATA_DIR, "products.csv"))
 }
 
