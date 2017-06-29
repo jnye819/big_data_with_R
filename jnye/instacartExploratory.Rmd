@@ -254,29 +254,30 @@ num_products %>%
 ```
 
 * What is the most popular department? 
-
-reorder_popularity_txt <- "
-SELECT op.product_id,n_orders,product_name
-FROM (
-  SELECT product_id,COUNT(1) AS n_orders
-  FROM order_products__prior_tbl
-  WHERE reordered=1
-  GROUP BY product_id
-  ORDER BY n_orders ASC
-  LIMIT 30)op
-LEFT JOIN (
-    SELECT product_id
-    ,   product_name
-    FROM products_tbl) p
-ON op.product_id = p.product_id
+```{r}
+department_popularity_txt <- "
+SELECT department_id,SUM(n_orders) AS total_orders
+FROM(
+  SELECT op.product_id,department_id,n_orders
+  FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC)op
+  LEFT JOIN (
+      SELECT product_id,department_id
+      FROM products_tbl) p
+  ON op.product_id = p.product_id
+ORDER BY total_orders ASC
+)
 "
 
+department_popularity <-
+  dbGetQuery(sc, department_popularity_txt)
 
-reorder_popularity <-
-  dbGetQuery(sc, reorder_popularity_txt)
+department_popularity
 
-reorder_popularity
-
+```
 
 ## Whisker, magrittr
 
@@ -322,7 +323,31 @@ product_times_ordered_txt %>%
 
 ## Questions
 
-* For given department, plot the most popular product (with templating department).
+* For given department, list the most popular 10 products (with templating department).
+```{r}
+product_times_ordered_txt <- "
+SELECT product_name,SUM(op.product_id) AS n_orders
+FROM(
+  SELECT op.product_id,department_id,n_orders
+  FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC)op
+  LEFT JOIN (
+      SELECT product_id,department_id
+      FROM products_tbl) p
+  ON op.product_id = p.product_id
+LIMIT 10
+)
+"
+product_times_ordered <-
+  dbGetQuery(sc, product_times_ordered_txt)
+
+product_times_ordered
+
+```
+
 * For given day, rank department popularity.
 
 ## More on orders (Window Functions)
@@ -349,11 +374,78 @@ WHERE user_id <= 10
 ```
 ```{r}
 dbGetQuery(sc, 
-"SELECT user_id
-,   order_id
-,   FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
+"SELECT user_id,order_id,FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
 FROM orders_tbl
 WHERE user_id <= 10 
 ")
 ```
+
+
+
+```{r}
+dbGetQuery(sc, 
+"SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+")
+```
+
+
+
+
+* Can you add the name? YES
+
+```{r}
+dbGetQuery(sc, 
+"SELECT product_name,AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id,product_id,COUNT(product_id) OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) op
+LEFT JOIN (
+    SELECT product_id,product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+GROUP BY product_name
+ORDER BY avg_products_number DESC
+LIMIT 10
+
+")
+```
+
+* What product is ordered when the order is small? Laxative
+
+```{r}
+dbGetQuery(sc, 
+"SELECT product_name,AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id,product_id,COUNT(product_id) OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) op
+LEFT JOIN (
+    SELECT product_id,product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+GROUP BY product_name
+ORDER BY avg_products_number ASC
+LIMIT 10
+
+")
+```
+
+* For 10 first users and all their orders find days since first order
+
+```{r}
+
+```
+
+
 
